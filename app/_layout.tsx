@@ -1,10 +1,16 @@
+import DataProvider from "@/components/DataProvider";
 import { Stack } from "expo-router";
 
 const RootLayout = () => {
   return (
-    <Stack>
-      <Stack.Screen name="index" />
-    </Stack>
+    <DataProvider>
+      <Stack>
+        <Stack.Screen name="(drawer)" options={{
+          headerShown: false,
+          headerTintColor: '#C89B3C'
+        }} />
+      </Stack>
+    </DataProvider>
   );
 }
 
