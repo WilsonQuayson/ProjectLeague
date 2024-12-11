@@ -1,5 +1,6 @@
 import { Champion, SimplifiedChampion } from "@/types";
 import { createContext, useContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 
 export interface DataContext{
@@ -7,9 +8,11 @@ export interface DataContext{
     loading: boolean;
     loadData: () => void;
     addChampion: (newChampion: SimplifiedChampion) => void;
+    storeData: (champion: SimplifiedChampion) => void;
+    getData: (champion: SimplifiedChampion) => void;
 }
 
-export const DataContext = createContext<DataContext>({champions: [], loading: false, loadData: () => {}, addChampion: () => {}});
+export const DataContext = createContext<DataContext>({champions: [], loading: false, loadData: () => {}, addChampion: () => {}, storeData: () => {}, getData: () => {}});
 
 export default function DataProvider({children} : {children: React.ReactNode}) {
     const [loading, setLoading] = useState(false);
@@ -19,6 +22,31 @@ export default function DataProvider({children} : {children: React.ReactNode}) {
         setChampions((prevChampions) => [...prevChampions, newChampion]);
     };
       
+    const storeData = async (champion : SimplifiedChampion) => {
+        try {
+            await AsyncStorage.setItem("favorite", JSON.stringify(champion));
+            console.log(`Champion ${champion.name} saved successfully.`);
+        } catch (error) {
+            console.error(`Failed to store champion ${champion.name}:`, error);
+        }
+    };
+
+    const getData = async () => {
+        try {
+            const value = await AsyncStorage.getItem("favorite");
+            if (value !== null) {
+              const champion: SimplifiedChampion = JSON.parse(value);
+              console.log(`Champion ${champion.name} retrieved successfully.`, champion);
+              return champion;
+            } else {
+              alert("No data found for the specified champion.");
+              return undefined;
+            }
+        } catch (error) {
+            console.error(`Failed to retrieve champion:`, error);
+            return undefined;
+        }
+    };
 
     async function loadData(){
         setLoading(true);
@@ -26,7 +54,6 @@ export default function DataProvider({children} : {children: React.ReactNode}) {
         const baseURL = "https://sampleapis.assimilate.be/lol/champions";
 
         let response = await fetch(baseURL, {headers});
-        //API Anders aanspreken
         if (!response.ok) {
             console.error("API error:", response.status, response.statusText);
             return;
@@ -45,6 +72,7 @@ export default function DataProvider({children} : {children: React.ReactNode}) {
                     full: champion.image.full,
                     loading: champion.image.loading,
                 },
+                info: champion.info
             })
         );
 
@@ -59,7 +87,7 @@ export default function DataProvider({children} : {children: React.ReactNode}) {
     }, [])
 
     return(
-        <DataContext.Provider value={{champions: champions, loading: loading, loadData: loadData, addChampion: addChampion}}>
+        <DataContext.Provider value={{champions: champions, loading: loading, loadData: loadData, addChampion: addChampion, storeData: storeData, getData: getData}}>
             {children}
         </DataContext.Provider>
     )

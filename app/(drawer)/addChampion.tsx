@@ -1,4 +1,4 @@
-import { SimplifiedChampion, Tag } from "@/types";
+import { Champion, SimplifiedChampion, Tag } from "@/types";
 import { useContext, useState } from "react";
 import { View, Text, StyleSheet, Alert, TextInput, Button, Image, Pressable } from "react-native";
 import { Picker } from "@react-native-picker/picker";
@@ -10,75 +10,120 @@ export default function AddChampion() {
     const [name, setName] = useState("");
     const [title, setTitle] = useState("");
     const [blurb, setBlurb] = useState("");
-    const [tags, setTags] = useState<Tag[] | null>(null)
-    const [image, setImage] = useState<string | null>(null);
+    const [tags, setTags] = useState<Tag[] | null>(null);
+    const [image, setImage] = useState<string>("");
 
-    const { champions, addChampion } = useContext(DataContext);
+    const { champions, addChampion, loadData, storeData } = useContext(DataContext);
 
-    const handleSubmit = async() => {
+    const handleSubmit = async () => {
         if (!name || !title || !blurb || !tags) {
-          Alert.alert("Error", "All fields and an image are required!");
-          return;
+            Alert.alert("Error", "All fields and an image are required!");
+            return;
         }
     
-        const newChampion: SimplifiedChampion = {
-          id: champions.length + 1,
-          name,
-          title,
-          blurb,
-          tags,
-          image: {
-            full: "https://placehold.co/600x400", // image picker & camera nog toevoegen
-            loading: "https://placehold.co/600x400",
-          },
+        const newChampion: Champion = {
+            id: champions.length + 1,
+            name,
+            title,
+            blurb,
+            tags,
+            image: {
+                full: image,
+                loading: image,
+            },
+            info: {
+                attack: 0,
+                defense: 0,
+                magic: 0,
+                difficulty: 0,
+            },
+            partype: "Mana",
+            stats: {
+                hp: 0,
+                hpperlevel: 0,
+                mp: 0,
+                mpperlevel: 0,
+                movespeed: 0,
+                armor: 0,
+                armorperlevel: 0,
+                attackdamage: 0,
+                attackdamageperlevel: 0,
+                attackspeed: 0,
+                attackspeedperlevel: 0,
+            },
         };
-
-        const headers = { method: 'POST', 'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InMxNDY2MDBAYXAuYmUiLCJpYXQiOjE3MzI4NzM4OTB9.AqCxFWDKCjh83sINNUsBRjJ7W4YBGGnfgMKLRwVkf6s' };
+    
         const baseURL = "https://sampleapis.assimilate.be/lol/champions";
-        let response = await fetch(baseURL, {headers});
-        
-        //addChampion(newChampion);
-        console.log("champion:" + newChampion)
+    
+        try {
+            const response = await fetch(baseURL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InMxNDY2MDBAYXAuYmUiLCJpYXQiOjE3MzI4NzM4OTB9.AqCxFWDKCjh83sINNUsBRjJ7W4YBGGnfgMKLRwVkf6s",
+                },
+                body: JSON.stringify(newChampion),
+            });
+
+            await loadData();
+    
+            if (response.ok) {
+                const addedChampion = await response.json();
+                console.log("Added Champion:", addedChampion);
+                Alert.alert("Success", "Champion added successfully!");
+                addChampion(newChampion);
+                storeData(newChampion);
+            } else {
+                const errorText = await response.text();
+                console.error("Failed to add champion:", errorText);
+                Alert.alert("Error", "Failed to add the champion. Please try again.");
+            };
+        } catch (error) {
+            console.error("Error:", error);
+            Alert.alert("Error", "An unexpected error occurred. Please try again.");
+        }
     };
+    
 
     const handleImagePicker = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
+            mediaTypes: ['images', 'videos'],
             allowsEditing: true,
             aspect: [4, 3],
             quality: 1,
         });
 
-        if(result.canceled) {
+        if (result.canceled) {
             console.log("Image picker canceled");
             return;
         }
 
-        if(result.assets && result.assets[0].uri){
-            try{
+        if (result.assets && result.assets[0].uri) {
+            try {
                 const sourceUri = result.assets[0].uri;
-
                 const fileName = sourceUri.split("/").pop();
                 const destUri = `${FileSystem.documentDirectory}${fileName}`;
 
                 await FileSystem.copyAsync({
                     from: sourceUri,
-                    to: destUri
+                    to: destUri,
                 });
 
                 setImage(destUri);
-            }catch(error){
-                console.error(error)
-                Alert.alert("Failed to save the image")
+            } catch (error) {
+                console.error(error);
+                Alert.alert("Failed to save the image");
             }
         }
-    }
+    };
 
-    return(
+    return (
         <View style={styles.main}>
-            <Text style={{color: "#C89B3C", fontSize:20, fontWeight:500}}>add your own champion to the league</Text>
+            <Text style={{ color: "#C89B3C", fontSize: 20, fontWeight: "500" }}>
+                Add your own champion to the league
+            </Text>
 
-            <View style={{marginTop:40}}>
+            <View style={{ marginTop: 40 }}>
                 <Text style={styles.label}>Name:</Text>
                 <TextInput
                     style={styles.input}
@@ -122,38 +167,44 @@ export default function AddChampion() {
                 {tags && <Text>Selected Tags: {tags.join(", ")}</Text>}
             </View>
 
-            <View style={{marginTop:20}}>
-                <Pressable style={styles.pickImage} onPress={handleImagePicker}><Text style={{textAlign: "center", color: "#C89B3C"}}>Pick an image</Text></Pressable>
+            <View style={{ marginTop: 20 }}>
+                <Pressable style={styles.pickImage} onPress={handleImagePicker}>
+                    <Text style={{ textAlign: "center", color: "#C89B3C" }}>Pick an image</Text>
+                </Pressable>
                 {image && (
-                    <Image
-                        source={{uri: image}}
-                        style={styles.image}
-                    />
+                    <Image source={{ uri: image }} style={styles.image} />
                 )}
             </View>
-            <View style={{marginTop: 10}}>
-                <Button title="Add Champion" onPress={handleSubmit} />  
-            </View>          
+
+            <View style={{ marginTop: 10 }}>
+                <Button title="Add Champion" onPress={handleSubmit} />
+            </View>
         </View>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
     main: {
         padding: 10,
         backgroundColor: "#091428",
-        flex: 1
+        flex: 1,
     },
     label: {
-        color: "#C89B3C"
+        color: "#C89B3C",
     },
     input: {
-
+        borderWidth: 1,
+        borderColor: "#C89B3C",
+        padding: 8,
+        marginTop: 5,
+        color: "#fff",
+        backgroundColor: "#1A263A",
+        borderRadius: 4,
     },
     image: {
-        height:50,
-        width:"auto",
-        resizeMode:"contain"
+        height: 50,
+        width: "auto",
+        resizeMode: "contain",
     },
     pickImage: {
         borderColor: "#C89B3C",
@@ -161,6 +212,6 @@ const styles = StyleSheet.create({
         padding: 5,
         width: 200,
         marginLeft: "auto",
-        marginRight: "auto"
-    }
-})
+        marginRight: "auto",
+    },
+});
