@@ -11,6 +11,7 @@ export default function Layout() {
         >
             <Drawer.Screen name="index" options={{title: "Home"}} />
             <Drawer.Screen name="addChampion" options={{title: "Add Champion"}} />
+            <Drawer.Screen name="myChampions" options={{title: "myChampions"}} />
         </Drawer>
     )
 }

@@ -5,6 +5,8 @@ import { Picker } from "@react-native-picker/picker";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { DataContext } from "@/components/DataProvider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 
 export default function AddChampion() {
     const [name, setName] = useState("");
@@ -13,7 +15,35 @@ export default function AddChampion() {
     const [tags, setTags] = useState<Tag[] | null>(null);
     const [image, setImage] = useState<string>("");
 
-    const { champions, addChampion, loadData, storeData } = useContext(DataContext);
+    const { champions, addChampion, loadData } = useContext(DataContext);
+
+    const saveObjectToStorage = async (champion: SimplifiedChampion) => {
+        try {
+          const existingArray = await AsyncStorage.getItem('myChampions');
+          let parsedArray: SimplifiedChampion[] = [];
+      
+          if (existingArray) {
+            try {
+              const parsedData = JSON.parse(existingArray);
+              if (Array.isArray(parsedData)) {
+                parsedArray = parsedData;
+              } else {
+                console.warn('Unexpected data format in AsyncStorage. Resetting to an empty array.');
+              }
+            } catch (error) {
+              console.warn('Failed to parse existing data. Resetting to an empty array.', error);
+            }
+          }
+      
+          parsedArray.push(champion);
+      
+          await AsyncStorage.setItem('myChampions', JSON.stringify(parsedArray));
+          console.log('Champion successfully saved to storage!');
+        } catch (error) {
+          console.error('Error saving object to storage:', error);
+        }
+    };
+      
 
     const handleSubmit = async () => {
         if (!name || !title || !blurb || !tags) {
@@ -72,7 +102,7 @@ export default function AddChampion() {
                 console.log("Added Champion:", addedChampion);
                 Alert.alert("Success", "Champion added successfully!");
                 addChampion(newChampion);
-                storeData(newChampion);
+                saveObjectToStorage(newChampion);
             } else {
                 const errorText = await response.text();
                 console.error("Failed to add champion:", errorText);
@@ -144,7 +174,7 @@ export default function AddChampion() {
             </View>
 
             <View>
-                <Text style={styles.label}>Blurb:</Text>
+                <Text style={styles.label}>Lore:</Text>
                 <TextInput
                     style={styles.input}
                     placeholder="some lore"

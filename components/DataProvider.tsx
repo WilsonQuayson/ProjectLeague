@@ -8,45 +8,43 @@ export interface DataContext{
     loading: boolean;
     loadData: () => void;
     addChampion: (newChampion: SimplifiedChampion) => void;
-    storeData: (champion: SimplifiedChampion) => void;
-    getData: (champion: SimplifiedChampion) => void;
 }
 
-export const DataContext = createContext<DataContext>({champions: [], loading: false, loadData: () => {}, addChampion: () => {}, storeData: () => {}, getData: () => {}});
+export const DataContext = createContext<DataContext>({champions: [], loading: false, loadData: () => {}, addChampion: () => {}});
 
 export default function DataProvider({children} : {children: React.ReactNode}) {
     const [loading, setLoading] = useState(false);
     const [champions, setChampions] = useState<SimplifiedChampion[]>([]);
 
-    const addChampion = (newChampion: SimplifiedChampion) => {
+    const addChampion = async (newChampion: SimplifiedChampion) => {
         setChampions((prevChampions) => [...prevChampions, newChampion]);
-    };
-      
-    const storeData = async (champion : SimplifiedChampion) => {
+    
         try {
-            await AsyncStorage.setItem("favorite", JSON.stringify(champion));
-            console.log(`Champion ${champion.name} saved successfully.`);
-        } catch (error) {
-            console.error(`Failed to store champion ${champion.name}:`, error);
-        }
-    };
-
-    const getData = async () => {
-        try {
-            const value = await AsyncStorage.getItem("favorite");
-            if (value !== null) {
-              const champion: SimplifiedChampion = JSON.parse(value);
-              console.log(`Champion ${champion.name} retrieved successfully.`, champion);
-              return champion;
-            } else {
-              alert("No data found for the specified champion.");
-              return undefined;
+            const existingArray = await AsyncStorage.getItem('myChampions');
+            let parsedArray: SimplifiedChampion[] = [];
+    
+            if (existingArray) {
+                try {
+                    const parsedData = JSON.parse(existingArray);
+                    if (Array.isArray(parsedData)) {
+                        parsedArray = parsedData;
+                    } else {
+                        console.warn('Unexpected data format in AsyncStorage. Resetting to an empty array.');
+                    }
+                } catch (error) {
+                    console.warn('Failed to parse existing data. Resetting to an empty array.', error);
+                }
             }
+    
+            parsedArray.push(newChampion);
+    
+            await AsyncStorage.setItem('myChampions', JSON.stringify(parsedArray));
+            console.log('New champion successfully saved to storage!');
         } catch (error) {
-            console.error(`Failed to retrieve champion:`, error);
-            return undefined;
+            console.error('Error saving new champion to storage:', error);
         }
     };
+    
 
     async function loadData(){
         setLoading(true);
@@ -80,14 +78,26 @@ export default function DataProvider({children} : {children: React.ReactNode}) {
 
         setChampions(champions);
         setLoading(false);
-    }
+    };
+
+    const initializeStorage = async () => {
+        try {
+          const existingArray = await AsyncStorage.getItem('myChampions');
+          if (!existingArray) {
+            await AsyncStorage.setItem('myChampions', JSON.stringify([]));
+          }
+        } catch (error) {
+          console.error('Error initializing storage:', error);
+        }
+    };
 
     useEffect(() => {
         loadData();
+        initializeStorage();
     }, [])
 
     return(
-        <DataContext.Provider value={{champions: champions, loading: loading, loadData: loadData, addChampion: addChampion, storeData: storeData, getData: getData}}>
+        <DataContext.Provider value={{champions: champions, loading: loading, loadData: loadData, addChampion: addChampion}}>
             {children}
         </DataContext.Provider>
     )
